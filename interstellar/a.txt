@@ -1,0 +1,175 @@
+#!/bin/bash
+
+#mount -o rw /dev/sdc1 /data
+#mount -o rw /dev/sda3 /mnt/rescue
+
+#!/bin/bash
+
+VG=$(sudo lvm vgscan | grep 'VG ' | awk '{print $3}')
+if [ -z "$VG" ]; then
+  echo "Error: Could not automatically determine Volume Group. Please run 'sudo lvm vgscan' manually and try again with the specific VG name."
+  exit 1
+fi
+
+LV=$(sudo lvm lvs "$VG" | grep -v 'swap' | grep -o '^  [a-zA-Z0-9_-]\+' | sed 's/ //g' | head -n 1)
+if [ -z "$LV" ]; then
+  echo "Error: Could not automatically determine the root Logical Volume. Please run 'sudo lvm lvs $VG' manually and try again with the specific LV name."
+  exit 1
+fi
+
+sudo mkdir -p /mnt/rescue
+sudo mount -o rw "/dev/mapper/${VG}-${LV}" /mnt/rescue
+
+if [ -d "/mnt/rescue/boot" ]; then
+  BOOT_PART=$(sudo findmnt -n -o SOURCE /boot)
+  if [ -n "$BOOT_PART" ]; then
+    sudo mount "$BOOT_PART" /mnt/rescue/boot
+  fi
+fi
+
+echo "LVM mounted under /mnt/rescue. You can now chroot."
+exit
+
+
+Okay, here's the process to remount the filesystem read-write and enable networking on a Rocky Linux system booting in safe mode (likely single-user mode), along with considerations for the MATE desktop environment.
+
+**Important Considerations:**
+
+*   **Why are you in Safe Mode?**  Before doing anything, try to determine why the system booted into safe mode in the first place.  There could be a filesystem error, a driver problem, a corrupted configuration file, or something more serious.  Addressing the underlying problem is crucial to prevent this from happening again.
+*   **Data Loss Risk:**  Remounting a filesystem read-write on a system that may have problems can potentially lead to data corruption if there are underlying issues.  Ideally, you would back up critical data if possible before proceeding.
+*   **Single User Mode:** Safe mode usually lands you in single-user mode, which means only the root user is logged in.
+
+**Steps to Remount Read-Write and Enable Networking:**
+
+1.  **Remount the Root Filesystem Read-Write:**
+
+    ```bash
+mount -o remount,rw /
+    ```
+
+    *   This command uses the `mount` utility.
+    *   `-o` specifies mount options.
+    *   `remount` tells `mount` to remount an already mounted filesystem.
+    *   `rw` specifies read-write access.
+    *   `/` is the root filesystem.
+
+    **Verify:** After this command, run `mount | grep /` to confirm that the root filesystem is now mounted with `rw` permissions.  The output should show something like:
+
+    ```
+    /dev/mapper/rl-root on / type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+    ```
+    (The specific output will vary based on your filesystem type).
+
+2.  **Enable Networking:**
+
+    *   **Check Networking Service Status (systemd):**
+
+        ```bash
+        systemctl status NetworkManager
+        ```
+
+        If it's disabled or failed, proceed.
+
+    *   **Enable and Start NetworkManager (Recommended):**  NetworkManager is the standard way to manage network connections on most modern Linux distributions, including Rocky Linux with MATE.
+
+        ```bash
+        systemctl enable NetworkManager
+        systemctl start NetworkManager
+        ```
+
+    *   **Alternative (if NetworkManager is unavailable/broken):** If for some reason NetworkManager is not working, you can try bringing up an interface manually (but this is less ideal).  You'll need to know the interface name (e.g., `eth0`, `enp0s3`, `wlan0`).  Use `ip link` to list available interfaces.  Then:
+
+        ```bash
+        ip link set <interface_name> up
+        dhclient <interface_name>  # Get an IP address via DHCP
+        ```
+
+        Replace `<interface_name>` with the actual name of your network interface.
+
+        *   `ip link set <interface_name> up`: Activates the interface.
+        *   `dhclient <interface_name>`:  Requests an IP address from a DHCP server.  This is the most common way to get an IP address on a home or office network.
+
+        If you need to set a static IP address, you'll need to edit the appropriate network configuration file.  That process is more involved and depends on whether you're using NetworkManager or not.  Let me know if you need instructions for that (and tell me if NetworkManager is working or not).
+
+    *   **Verify Network Connectivity:**
+
+        ```bash
+        ping -c 3 google.com
+        ```
+
+        If you get replies from Google's servers, your networking is working.
+
+3.  **Examine System Logs:**
+
+    *   Check the system logs for errors that might explain why you booted into safe mode:
+
+        ```bash
+        journalctl -b -1  # Logs from previous boot
+        journalctl -b      # Logs from current boot
+        ```
+
+        Look for red or error messages. This can provide clues about the underlying problem.
+
+4.  **Attempt Normal Boot:**
+
+    Once you've remounted the filesystem and enabled networking, try to reboot the system normally.
+
+    ```bash
+    reboot
+    ```
+
+**MATE Desktop Considerations:**
+
+*   **Display Manager:** Safe mode usually bypasses the display manager (like LightDM or GDM).  If you successfully reboot, the MATE desktop should start automatically. If not, you can try starting the display manager manually:
+
+    ```bash
+    systemctl start lightdm  # Or gdm, depending on your display manager
+    ```
+
+*   **Graphical Tools:**  If you need to use graphical tools to diagnose the problem (e.g., a disk utility to check for filesystem errors), you'll need to get the MATE desktop running.
+
+**Troubleshooting:**
+
+*   **Filesystem Errors:** If the system booted into safe mode due to filesystem errors, you might need to run `fsck` on the affected partition.  **Important:**  Do this *before* remounting read-write if possible. To identify the disk and partition, you can use `lsblk`.  For example, to check `/dev/sda1`:
+
+    ```bash
+    fsck -y /dev/sda1
+    ```
+
+    `-y` answers "yes" to all prompts, attempting to automatically repair any errors.  Use with caution, and only if you have a backup or are comfortable with the risk.
+
+*   **Configuration File Errors:** Errors in configuration files (e.g., `/etc/fstab`, `/etc/network/interfaces`) can also cause boot problems. Carefully review these files for any syntax errors or incorrect settings.  Use a text editor like `nano` or `vi`.
+
+*   **Driver Issues:** If a driver is causing problems, you might need to update or reinstall it.  This often involves using package management tools like `dnf`.  However, you'll need working networking to download the necessary packages.
+
+**Example Scenario:**
+
+Let's say your system boots into safe mode. You log in as root. You run:
+
+```bash
+mount -o remount,rw /
+systemctl enable NetworkManager
+systemctl start NetworkManager
+ping -c 3 google.com
+reboot
+```
+
+After the reboot, if the MATE desktop doesn't start, you might try:
+
+```bash
+systemctl start lightdm
+```
+
+**Important Safety Notes:**
+
+*   **Backup:** If at all possible, back up your important data *before* attempting any repairs, especially if you suspect filesystem corruption.
+*   **Care with `fsck`:**  Using `fsck` improperly can damage your filesystem.  If you're unsure, consult the `fsck` man page (`man fsck`) or seek expert advice.
+*   **Double-Check:** Carefully double-check all commands before executing them, especially those that modify system files or partitions.  A typo can have serious consequences.
+
+Let me know if you can give me more information about why you think it's booting in safe mode and I can give more specific help.  Good luck!
+
+
+Yes, I installed nvidia drivers and cuda and it will not boot in anything but single user mode. 
+I use a screen reader so journalctl is garbage and not usable.
+I intend to try to use dnf to uninstall anything relatecd to nvidia with *nvidia*
+please give proper syntax commands to remount, enable network and uninstall then i guess update the system to possibly get a good kernel again?

@@ -1,0 +1,96 @@
+**Commands to Execute in Single-User Mode:**
+
+1.  **Remount the Root Filesystem Read-Write:**
+
+    ```bash
+mount -o remount,rw /
+    ```
+
+    *   This is crucial to allow you to make changes to the system.
+    *   The `echo` command provides confirmation to your screen reader.
+
+2.  **Enable and Start NetworkManager (with checks):**
+
+    ```bash
+systemctl enable NetworkManager
+echo "NetworkManager enabled."
+systemctl start NetworkManager
+echo "NetworkManager started. Checking status..."
+systemctl status NetworkManager | head -n 20
+    ```
+
+    *   We enable it so it starts on future boots (if this solves the problem).
+    *   We start it immediately.
+    *   `systemctl status` gives verbose output.  Piping to `head -n 20` limits the output to the first 20 lines, which usually contains the most important information about the service's status (including any error messages).
+    *   Carefully listen to the output from `systemctl status`. Look for lines that say "active (running)" or any lines indicating errors, failures, or dependency issues. If it fails to start, note the error message.
+
+3.  **Uninstall NVIDIA Packages (Using DNF):**
+
+    ```bash
+dnf remove "*nvidia*" -y
+echo "NVIDIA packages uninstalled (attempted).  Check output above for errors."
+    ```
+
+    *   `dnf remove "*nvidia*"`:  This attempts to remove all packages with "nvidia" in their name. The `*` is a wildcard.
+    *   `-y`:  Automatically answers "yes" to all prompts, which is essential when using a screen reader to avoid interactive prompts.
+    *   **Important:**  Carefully listen to the output of this command!  DNF will list the packages it is removing. Make sure it's removing what you expect.  If you see errors like "No match for argument," it means DNF couldn't find a package with that name.
+    *   If you know specific package names (e.g., `kmod-nvidia-*`, `nvidia-driver*`, `cuda*`), you can list them explicitly: `dnf remove kmod-nvidia-* nvidia-driver* cuda* -y`
+
+4.  **Clean DNF Cache (Optional, but Recommended):**
+
+    ```bash
+dnf clean all
+echo "DNF cache cleaned."
+    ```
+
+    *   This removes cached package data, which can sometimes resolve dependency issues.
+
+5.  **Update the System (Including Kernel):**
+
+    ```bash
+dnf update -y
+echo "System updated. Check output above for errors."
+    ```
+
+    *   `dnf update`: This updates all packages to their latest versions, including the kernel.  This *might* install a kernel that doesn't have the NVIDIA driver problem.
+    *   `-y`: Again, answers "yes" to all prompts.
+    *   **Important:**  Pay close attention to the output!  Watch for any errors during the update process.
+
+6.  **Reboot the System:**
+
+    ```bash
+reboot
+    ```
+
+    *   After the reboot, the system *should* boot into the normal graphical environment.
+
+**Troubleshooting After Reboot:**
+
+*   **Still in Single-User Mode?** If it still boots to single-user mode, something else is wrong.  Check the system logs (if you can find a way to make them readable with your screen reader).  Common causes include:
+    *   Filesystem errors (run `fsck` on the root partition *before* remounting read-write).
+    *   Errors in `/etc/fstab` (incorrect mount options).
+    *   Kernel panic (often driver-related).
+*   **No GUI?**  If it boots, but there's no graphical interface:
+    *   Try starting the display manager manually: 
+`systemctl start lightdm` 
+(or `gdm`, whichever you use).
+    *   Check the display manager's logs: `journalctl -u lightdm` (or `journalctl -u gdm`).
+
+**Alternative Networking (If NetworkManager Fails):**
+
+If NetworkManager stubbornly refuses to start, you can try manually configuring a network interface.  First, find the interface name:
+
+```bash
+ip link | head -n 20
+```
+
+Look for an interface that is `DOWN` and that is *likely* your ethernet adapter (e.g., `enp0s3`).  Then:
+
+```bash
+ip link set <interface_name> up
+dhclient <interface_name>
+```
+
+Replace `<interface_name>` with the actual name.  Then try `ping -c 3 google.com` to test connectivity.  If this works, you can proceed with the DNF commands above.  However, note that this configuration is *temporary* and will not persist across reboots unless you configure it properly (which involves editing network configuration files).
+```
+

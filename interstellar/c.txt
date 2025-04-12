@@ -1,0 +1,19 @@
+#!/bin/bash
+
+VG="rl_hp"
+ROOT_LV="root"
+MOUNT_POINT="/mnt/rescue"
+
+sudo lvm vgchange -ay "$VG"
+
+sudo mkdir -p "$MOUNT_POINT"
+sudo mount -o rw "/dev/mapper/${VG}-${ROOT_LV}" "$MOUNT_POINT"
+
+if [ -d "/mnt/rescue/boot" ]; then
+  BOOT_PART=$(sudo findmnt -n -o SOURCE /boot)
+  if [ -n "$BOOT_PART" ]; then
+    sudo mount "$BOOT_PART" "$MOUNT_POINT/boot"
+  fi
+fi
+
+echo "LVM mounted under $MOUNT_POINT. You can now chroot."
