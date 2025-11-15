@@ -4,9 +4,12 @@ This isn't about whether you're smart or capable. You absolutely are. This is ab
 The Invisible Holes in Your Information
 Think about it like this: Imagine you're reading a book. But without you knowing, every now and then, a sentence just… vanishes. You keep reading, none the wiser, thinking you got it all. That's exactly what can happen when you use a screen reader in continuous reading mode (like when it just goes through a whole page or document).
 Here's the nitty-gritty: Screen readers aren't just simple voice machines. They're trying to make sense of all the invisible code behind the text. When that code is messy, or if your computer's brain (the screen reader's "buffer" or processing pipeline) gets swamped, it hits a wall. At that point, the software has to choose:
-1. Garble the words: Make the speech sound like nonsense.
-2. Freeze up: Just stop talking altogether.
-3. Skip it: Quietly jump over the messed-up part and carry on as if nothing happened.
+
+Garble the words: Make the speech sound like nonsense.
+
+Freeze up: Just stop talking altogether.
+
+Skip it: Quietly jump over the messed-up part and carry on as if nothing happened.
 To keep things flowing smoothly and avoid annoying stops or crashes, screen readers often pick "skip." And because there's no "Warning! Missing words!" siren, you're left in the dark, truly believing you've heard everything.
 The Tricky Trap of "Being a Pro"
 This hidden skipping creates a dangerous illusion. Because the voice keeps going, you think you're getting it all. This leads to a huge problem, especially if you're one of those "rock star" screen reader users who flies through text at warp speed.
@@ -20,3 +23,4 @@ It's Time for a Real Talk
 For decades, the blind community has rightly pushed the message that "blind people can do anything." This has been vital for opening doors. But holding onto the idea that our tech is perfect, even when it's quietly dropping information, could actually hurt us in the long run. If employers or lawmakers find out that important details are being missed, it gives them a reason – even a wrong one – to question if blind professionals can handle certain roles.
 This isn't about blaming anyone. It's a call for honesty. We need to openly talk about these hidden problems with our screen readers. We need to push developers to make screen readers smarter, so they either catch everything or at least tell us when something goes wrong. And we need to make sure that the digital world creates content that screen readers can actually understand fully.
 Only then can we be truly confident that when we "read" something with a screen reader, we're actually getting the whole, unvarnished truth.
+
